@@ -98,20 +98,23 @@ public class ForecastFragment extends Fragment {
             BufferedReader reader = null;
 
             String forecastJsonStr = null;
+            String mode = "json";
             String units = "metric";
             int days = 7;
             String apiKey = "15155ca6022227feb9bb9c1d6a496673";
 
             try {
                 final String FORECAST_BASE_URL =
-                        "http://api.openweathermap.org/data/2.5/forecast/weather?";
+                        "http://api.openweathermap.org/data/2.5/forecast/daily?";
                 final String QUERY_PARAM = "q";
+                final String MODE = "mode";
                 final String UNITS_PARAM = "units";
                 final String DAYS_PARAM = "cnt";
                 final String APPID_PARAM = "appid";
 
                 Uri.Builder uri = Uri.parse(FORECAST_BASE_URL).buildUpon()
                         .appendQueryParameter(QUERY_PARAM, params[0])
+                        .appendQueryParameter(MODE,mode)
                         .appendQueryParameter(UNITS_PARAM, units)
                         .appendQueryParameter(DAYS_PARAM, Integer.toString(days))
                         .appendQueryParameter(APPID_PARAM, apiKey);
@@ -168,8 +171,8 @@ public class ForecastFragment extends Fragment {
             if (strings != null)
             {
                 adapter.clear();
-                for (String forecast : strings) {
-                    adapter.add(forecast);
+                for (String dayForecastStr : strings) {
+                    adapter.add(dayForecastStr);
                 }
             }
         }
@@ -209,10 +212,10 @@ public class ForecastFragment extends Fragment {
             // These are the names of the JSON objects that need to be extracted.
             final String OWM_LIST = "list";
             final String OWM_WEATHER = "weather";
-            final String OWM_MAIN = "main";
-            final String OWM_MAX = "temp_max";
-            final String OWM_MIN = "temp_min";
-            final String OWM_DESCRIPTION = "main";
+            final String OWM_MAIN = "temp";
+            final String OWM_MAX = "max";
+            final String OWM_MIN = "min";
+            final String OWM_DESCRIPTION = "description";
 
             JSONObject forecastJson = new JSONObject(forecastJsonStr);
             JSONArray weatherArray = forecastJson.getJSONArray(OWM_LIST);
