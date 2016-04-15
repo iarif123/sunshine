@@ -1,8 +1,11 @@
 package com.example.android.sunshine.app;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -12,8 +15,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -56,11 +60,24 @@ public class ForecastFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem menuItem) {
         int id = menuItem.getItemId();
         if (id == R.id.action_refresh) {
-            FetchWeatherTask weatherTask = new FetchWeatherTask();
-            weatherTask.execute("n2j4l4");
-            return true;
+            updateWeather();
         }
+
         return super.onOptionsItemSelected(menuItem);
+    }
+
+    private void updateWeather() {
+        FetchWeatherTask weatherTask = new FetchWeatherTask();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String location = prefs.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        String units = prefs.getString(getString(R.string.pref_units_key),getString(R.string.pref_units_label_metric));
+        weatherTask.execute(location,units);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
     }
 
     @Override
@@ -68,23 +85,23 @@ public class ForecastFragment extends Fragment {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        String[] forecastArray = {
-                "Today - Sunny - 88/70",
-                "Tomorrow - Cloudy - 80/70",
-                "Sunday - Sunny - 85/75",
-                "Monday - Rainy - 86/76",
-                "Tuesday - Rainy - 86/76",
-                "Wednesday - Rainy - 86/76",
-                "Thursday - Rainy - 86/76"
-        };
-
-        List<String> weekForecast = new ArrayList<>(Arrays.asList(forecastArray));
-
-        adapter = new ArrayAdapter<>(getActivity(),R.layout.list_item_forecast,R.id.list_item_forecast_textview,weekForecast);
+        adapter = new ArrayAdapter<>(getActivity(),R.layout.list_item_forecast,R.id.list_item_forecast_textview,new ArrayList());
 
         ListView listView = (ListView)rootView.findViewById(R.id.listview_forecast);
 
         listView.setAdapter(adapter);
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                String forecast = adapter.getItem(i);
+                Intent detailActivityIntent = new Intent(getActivity(),DetailActivity.class)
+                        .putExtra(Intent.EXTRA_TEXT,forecast);
+                startActivity(detailActivityIntent);
+            }
+        });
+
+
 
         return rootView;
     }
@@ -99,7 +116,6 @@ public class ForecastFragment extends Fragment {
 
             String forecastJsonStr = null;
             String mode = "json";
-            String units = "metric";
             int days = 7;
             String apiKey = "15155ca6022227feb9bb9c1d6a496673";
 
@@ -115,7 +131,7 @@ public class ForecastFragment extends Fragment {
                 Uri.Builder uri = Uri.parse(FORECAST_BASE_URL).buildUpon()
                         .appendQueryParameter(QUERY_PARAM, params[0])
                         .appendQueryParameter(MODE,mode)
-                        .appendQueryParameter(UNITS_PARAM, units)
+                        .appendQueryParameter(UNITS_PARAM, params[1])
                         .appendQueryParameter(DAYS_PARAM, Integer.toString(days))
                         .appendQueryParameter(APPID_PARAM, apiKey);
 
@@ -158,7 +174,7 @@ public class ForecastFragment extends Fragment {
             }
 
             try {
-                return getWeatherDataFromJson(forecastJsonStr,days);
+                return getWeatherDataFromJson(forecastJsonStr,days, params[1]);
             } catch (JSONException e) {
                 Log.e(LOG_TAG,e.getMessage(),e);
                 e.printStackTrace();
@@ -190,7 +206,14 @@ public class ForecastFragment extends Fragment {
         /**
          * Prepare the weather high/lows for presentation.
          */
-        private String formatHighLows(double high, double low) {
+        private String formatHighLows(double high, double low, String unitType) {
+            if (unitType.equals(getString(R.string.pref_units_imperial))) {
+                                high = (high * 1.8) + 32;
+                                low = (low * 1.8) + 32;
+                            } else if (!unitType.equals(getString(R.string.pref_units_metric))) {
+                                Log.d(LOG_TAG, "Unit type not found: " + unitType);
+                            }
+
             // For presentation, assume the user doesn't care about tenths of a degree.
             long roundedHigh = Math.round(high);
             long roundedLow = Math.round(low);
@@ -206,7 +229,7 @@ public class ForecastFragment extends Fragment {
          * Fortunately parsing is easy:  constructor takes the JSON string and converts it
          * into an Object hierarchy for us.
          */
-        private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays)
+        private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays, String unitType)
                 throws JSONException {
 
             // These are the names of the JSON objects that need to be extracted.
@@ -238,6 +261,7 @@ public class ForecastFragment extends Fragment {
             dayTime = new Time();
 
             String[] resultStrs = new String[numDays];
+
             for(int i = 0; i < weatherArray.length(); i++) {
                 // For now, using the format "Day, description, hi/low"
                 String day;
@@ -265,7 +289,7 @@ public class ForecastFragment extends Fragment {
                 double high = mainObject.getDouble(OWM_MAX);
                 double low = mainObject.getDouble(OWM_MIN);
 
-                highAndLow = formatHighLows(high, low);
+                highAndLow = formatHighLows(high, low, unitType);
                 resultStrs[i] = day + " - " + description + " - " + highAndLow;
             }
             return resultStrs;
