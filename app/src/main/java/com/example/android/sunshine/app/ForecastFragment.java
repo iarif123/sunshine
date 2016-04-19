@@ -116,7 +116,6 @@ public class ForecastFragment extends Fragment {
             String forecastJsonStr = null;
             String mode = "json";
             int days = 7;
-            String apiKey = "15155ca6022227feb9bb9c1d6a496673";
 
             try {
                 final String FORECAST_BASE_URL =
@@ -125,14 +124,14 @@ public class ForecastFragment extends Fragment {
                 final String MODE = "mode";
                 final String UNITS_PARAM = "units";
                 final String DAYS_PARAM = "cnt";
-                final String APPID_PARAM = "appid";
+                final String APPID_PARAM = "APPID";
 
                 Uri.Builder uri = Uri.parse(FORECAST_BASE_URL).buildUpon()
                         .appendQueryParameter(QUERY_PARAM, params[0])
                         .appendQueryParameter(MODE,mode)
                         .appendQueryParameter(UNITS_PARAM, params[1])
                         .appendQueryParameter(DAYS_PARAM, Integer.toString(days))
-                        .appendQueryParameter(APPID_PARAM, apiKey);
+                        .appendQueryParameter(APPID_PARAM, BuildConfig.OPEN_WEATHER_MAP_API_KEY);
 
                 URL url = new URL(uri.toString());
 
