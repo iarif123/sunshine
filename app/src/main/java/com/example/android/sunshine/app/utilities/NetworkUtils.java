@@ -1,0 +1,111 @@
+package com.example.android.sunshine.app.utilities;
+
+/**
+ * Created by irteza.arif on 2017-04-24.
+ */
+
+import android.net.Uri;
+import android.util.Log;
+
+import com.example.android.sunshine.app.BuildConfig;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Scanner;
+
+/**
+ * These utilities will be used to communicate with the weather servers.
+ */
+public final class NetworkUtils {
+
+    private static final String TAG = NetworkUtils.class.getSimpleName();
+
+    private static final String DYNAMIC_WEATHER_URL =
+            "https://andfun-weather.udacity.com/weather";
+
+    private static final String STATIC_WEATHER_URL =
+            "http://api.openweathermap.org/data/2.5/forecast/daily?";
+
+    private static final String FORECAST_BASE_URL = STATIC_WEATHER_URL;
+
+    private static final String format = "json";
+    private static final int numDays = 14;
+
+    final static String QUERY_PARAM = "q";
+    final static String LAT_PARAM = "lat";
+    final static String LON_PARAM = "lon";
+    final static String FORMAT_PARAM = "mode";
+    final static String UNITS_PARAM = "units";
+    final static String DAYS_PARAM = "cnt";
+    final static String APPID_PARAM = "APPID";
+
+    /**
+     * Builds the URL used to talk to the weather server using a location. This location is based
+     * on the query capabilities of the weather provider that we are using.
+     *
+     * @param locationQuery The location that will be queried for.
+     * @return The URL to use to query the weather server.
+     */
+    public static URL buildUrl(String locationQuery, String unitsQuery) {
+        Uri builtUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
+                .appendQueryParameter(QUERY_PARAM, locationQuery)
+                .appendQueryParameter(FORMAT_PARAM, format)
+                .appendQueryParameter(UNITS_PARAM, unitsQuery)
+                .appendQueryParameter(DAYS_PARAM, Integer.toString(numDays))
+                .appendQueryParameter(APPID_PARAM, BuildConfig.OPEN_WEATHER_MAP_API_KEY)
+                .build();
+
+        URL url = null;
+        try {
+            url = new URL(builtUri.toString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        Log.v(TAG, "Built URI " + url);
+
+        return url;
+    }
+
+    /**
+     * Builds the URL used to talk to the weather server using latitude and longitude of a
+     * location.
+     *
+     * @param lat The latitude of the location
+     * @param lon The longitude of the location
+     * @return The Url to use to query the weather server.
+     */
+    public static URL buildUrl(Double lat, Double lon) {
+        /** This will be implemented in a future lesson **/
+        return null;
+    }
+
+    /**
+     * This method returns the entire result from the HTTP response.
+     *
+     * @param url The URL to fetch the HTTP response from.
+     * @return The contents of the HTTP response.
+     * @throws IOException Related to network and stream reading
+     */
+    public static String getResponseFromHttpUrl(URL url) throws IOException {
+        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+        try {
+            InputStream in = urlConnection.getInputStream();
+
+            Scanner scanner = new Scanner(in);
+            scanner.useDelimiter("\\A");
+
+            boolean hasInput = scanner.hasNext();
+            if (hasInput) {
+                return scanner.next();
+            } else {
+                return null;
+            }
+        } finally {
+            urlConnection.disconnect();
+        }
+    }
+}
